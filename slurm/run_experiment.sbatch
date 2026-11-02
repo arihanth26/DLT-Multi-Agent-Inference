@@ -2,7 +2,7 @@
 #SBATCH --job-name=dlt-experiment
 #SBATCH --output=logs/exp_%j.out
 #SBATCH --error=logs/exp_%j.err
-#SBATCH --gres=gpu:A100:2
+#SBATCH --gres=gpu:A40:1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
 #SBATCH --time=4:00:00
@@ -16,7 +16,7 @@
 # Positional args:  CONFIG  CONFIG_NAME  SEED  RUN_DIR
 #
 # This script:
-#   1. Starts both vLLM servers (large on GPU 0, small on GPU 1)
+#   1. Starts both vLLM servers (both on single GPU, split memory)
 #   2. Waits until both are healthy
 #   3. Runs the experiment
 #   4. Shuts down the servers
@@ -52,19 +52,19 @@ source activate "$CONDA_ENV"
 # --- Start vLLM servers ---
 echo "=== Starting vLLM servers ==="
 
-CUDA_VISIBLE_DEVICES=0 vllm serve Qwen/Qwen3-14B \
+vllm serve Qwen/Qwen3-14B \
     --port 8000 \
-    --gpu-memory-utilization 0.90 \
+    --gpu-memory-utilization 0.75 \
     --enable-prefix-caching \
-    --max-model-len 32768 \
+    --max-model-len 16384 \
     > logs/vllm_large_${SLURM_JOB_ID}.log 2>&1 &
 LARGE_PID=$!
 
-CUDA_VISIBLE_DEVICES=1 vllm serve Qwen/Qwen3-1.7B \
+vllm serve Qwen/Qwen3-1.7B \
     --port 8001 \
-    --gpu-memory-utilization 0.90 \
+    --gpu-memory-utilization 0.12 \
     --no-enable-prefix-caching \
-    --max-model-len 32768 \
+    --max-model-len 4096 \
     > logs/vllm_small_${SLURM_JOB_ID}.log 2>&1 &
 SMALL_PID=$!
 
