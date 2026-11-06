@@ -53,6 +53,14 @@ MODELS: Dict[str, ModelSpec] = {
     ),
     "qwen3-1.7b": ModelSpec("qwen3-1.7b", "Qwen/Qwen3-1.7B", "small", 8001, 0.20, thinking_toggle=True),
     "phi-4-mini": ModelSpec("phi-4-mini", "microsoft/Phi-4-mini-instruct", "small", 8001, 0.20),
+    # Approved proposal: one dense 8B model alone on the H100 (no second server), and a 1B model
+    # for development on smaller GPUs. The 32k context fits QuALITY round-2 prompts (~10-12k).
+    "llama-3.1-8b": ModelSpec(
+        "llama-3.1-8b", "meta-llama/Llama-3.1-8B-Instruct", "large", 8000, 0.90, max_model_len=32768
+    ),
+    "llama-3.2-1b": ModelSpec(
+        "llama-3.2-1b", "meta-llama/Llama-3.2-1B-Instruct", "dev", 8000, 0.90, max_model_len=32768
+    ),
 }
 
 DEFAULT_LARGE = "qwen3-14b"
