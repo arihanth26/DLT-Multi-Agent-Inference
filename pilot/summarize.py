@@ -8,6 +8,7 @@ Usage:
 """
 
 import json
+import math
 import random
 import statistics as st
 import sys
@@ -83,7 +84,7 @@ def main(path: str) -> None:
         x = med(base) / med(rows) if base else float("nan")
         ans = st.mean(t for r in rows for t in r["answer_tokens"])
         print(f"{k[0]:8}{k[1]:>3}  {LABEL[(k[2], k[3])]:22}{len(rows):>4}{med(rows):>8.2f}"
-              f"{T[int(0.95 * (len(T) - 1))]:>7.2f}{x:>7.2f}{sum(r['correct'] for r in rows) / len(rows):>6.2f}"
+              f"{T[math.ceil(0.95 * len(T)) - 1]:>7.2f}{x:>7.2f}{sum(r['correct'] for r in rows) / len(rows):>6.2f}"
               f"{prefill_per_task(rows):>13.0f}{100 * ca / max(pt, 1):>8.1f}{ans:>8.0f}"
               f"{st.median(r['T'] / r['cp'] for r in rows):>6.2f}")
 

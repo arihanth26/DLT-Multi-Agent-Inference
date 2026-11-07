@@ -154,7 +154,8 @@ def trace_row(r: CallResult, kind: str, agent: int, rnd: int, t0: float) -> Dict
             "prompt": r.prompt_tokens, "cached": r.cached_tokens, "out": r.output_tokens}
 
 
-async def run_debate(client: LLMClient, task: str, mode: str, p: Dict[str, Any], run_seed: int) -> Dict[str, Any]:
+async def run_debate(client: LLMClient, task: str, mode: str, p: Dict[str, Any], run_seed: int,
+                     record_inputs: bool = False) -> Dict[str, Any]:
     """Run one debate (or single call) and return its record."""
     n_agents, n_rounds = (1, 1) if mode == "single" else (AGENTS, ROUNDS)
     r1 = round1_prompt(task, p)
@@ -162,9 +163,18 @@ async def run_debate(client: LLMClient, task: str, mode: str, p: Dict[str, Any],
     t0 = time.perf_counter()
 
     async def call(msgs, agent, rnd, kind="debate", max_tokens=None):
-        res = await client.agenerate(msgs, seed=call_seed(run_seed, p["id"], agent, rnd),
+        seed = call_seed(run_seed, p["id"], agent, rnd)
+        snapshot = [dict(m) for m in msgs] if record_inputs else None
+        res = await client.agenerate(msgs, seed=seed,
                                      max_tokens=max_tokens, role=f"agent{agent}", round=rnd)
-        trace.append(trace_row(res, kind, agent, rnd, t0))
+        row = trace_row(res, kind, agent, rnd, t0)
+        if record_inputs:
+            row.update(messages=snapshot, response=res.text, request_seed=seed,
+                       messages_sha256=hashlib.sha256(json.dumps(
+                           snapshot, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+                       sampling={"temperature": SAMPLING.temperature, "top_p": SAMPLING.top_p,
+                                 "max_tokens": max_tokens or SAMPLING.max_tokens})
+        trace.append(row)
         return res.text
 
     async def warm(msgs, rnd):
@@ -235,7 +245,7 @@ async def amain(a: argparse.Namespace) -> None:
     with open(a.out, "a") as f:
         async def one(p):
             async with sem:
-                rec = await run_debate(client, a.task, a.mode, p, a.seed)
+                rec = await run_debate(client, a.task, a.mode, p, a.seed, a.record_inputs)
             rec.update(meta)
             f.write(json.dumps(rec) + "\n")
             f.flush()
@@ -261,6 +271,8 @@ def main() -> None:
     ap.add_argument("--model", default="llama-3.1-8b")
     ap.add_argument("--base-url", default=None)
     ap.add_argument("--out", default="results/pilot/pilot.jsonl")
+    ap.add_argument("--record-inputs", action="store_true",
+                    help="Retain request messages, seeds, sampling settings and full responses for auditing.")
     a = ap.parse_args()
     if a.mode in ("l3a", "l3") and a.apc == "off":
         ap.error("L3 sits on top of L1 and L2: run it with --apc on")

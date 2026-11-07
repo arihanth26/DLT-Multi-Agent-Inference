@@ -37,6 +37,7 @@ mkdir -p logs results/pilot
 } | tee "${OUT%.jsonl}_env.txt"
 
 SERVER_PID=""
+FAILED_CONFIGS=0
 stop_server() {
   [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null && wait "$SERVER_PID" 2>/dev/null
   pkill -f "vllm.entrypoints.openai.api_server" 2>/dev/null
@@ -60,7 +61,10 @@ start_server() {  # $1 = on | off (prefix caching)
 
 run() {  # task mode apc n conc
   python -m pilot.debate --task "$1" --mode "$2" --apc "$3" --n "$4" --conc "$5" \
-    --model "$MODEL" --out "$OUT" || echo "!! failed: $*"
+    --model "$MODEL" --out "$OUT" || {
+      echo "!! failed: $*"
+      FAILED_CONFIGS=$((FAILED_CONFIGS + 1))
+    }
 }
 
 # --- Prefix caching ON: BASE, L1+L2, L3a, L3, single agent; then C=4 ---
@@ -81,5 +85,9 @@ done
 run quality par off "$NQ" 4
 stop_server
 
-python -m pilot.summarize "$OUT" | tee "${OUT%.jsonl}_summary.md"
+python -m pilot.summarize "$OUT" | tee "${OUT%.jsonl}_summary.md" || exit 1
+if [ "$FAILED_CONFIGS" -ne 0 ]; then
+  echo "!! incomplete: $FAILED_CONFIGS configurations failed"
+  exit 1
+fi
 echo "== done in ${SECONDS}s"
