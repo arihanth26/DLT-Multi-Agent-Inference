@@ -1,7 +1,58 @@
 # Handoff: pilot setup on PACE-ICE
 
+> **Superseded:** see [HANDOFF.md](../HANDOFF.md) for the current status. This file is kept for history.
+
+For the complete current session handoff, read [CLAUDE_HANDOFF.md](../CLAUDE_HANDOFF.md).
+It includes the validated experiments, artifact map, code changes, analysis caveats and
+the final C=1 run that still needs retrieval. This older document retains historical text.
+
 Status as of 2026-11-06. Written for the team (Tanishk, Arihanth, Malhar) and anyone who picks
 up the pilot run.
+
+### Live follow-up, Nov 6 evening
+
+- Quota failure resolved: `~/scratch` was an ordinary directory on the **30 GB home**
+  filesystem, not the 300 GB scratch allocation. `~/scratch/hf` now symlinks to
+  `/storage/ice1/9/1/tdeo7/dlt/hf`; the model download completed. Xet was only 408 KB,
+  so the earlier Xet-cache explanation below was not supported by the actual usage.
+- Smoke job **6850879** completed successfully in **9m13s** on an NVIDIA H100 80GB HBM3,
+  vLLM 0.31.0. All 18 configurations produced two records (36 total). Structural trace
+  checks passed and APC-off cached-token counts were zero. Artifacts are in `results/pilot/`.
+- Exploratory pilot **6850988** was queued, then canceled after launching the same default
+  30 GSM8K / 20 QuALITY grid inside the user's existing idle H100 VS Code allocation,
+  **6847083**, step **6847083.1**, at 18:35 Eastern. This allocation has four CPUs and
+  80 GB host memory. Output stem: `results/pilot/pilot_6847083_initial`; log:
+  `logs/pilot_existing_6847083.out`. The runner now reports a failed exit status when any
+  configuration fails; source changes are uncommitted locally and on ICE.
+- Step **6847083.1 completed successfully in 29m27s**. All **430 expected records** passed
+  validation. Read `results/pilot/pilot_6847083_initial_report.md` for the interpreted table,
+  paired bootstrap intervals, exact McNemar checks, quality warnings and limitations.
+  C=1 BASE-to-parallel median latency ratios: **2.19x GSM8K**, **2.41x QuALITY**.
+  Full L3 did not improve median latency in this pilot. QuALITY C=4 had a 10 pp accuracy
+  warning for parallel+APC and full L3 against BASE. Separate same-seed repeats were
+  launched as step **6847083.2** to investigate variability; do not pool them into the grid.
+  Those repeats also completed (3m45s, 80 validated records): BASE/parallel accuracy was
+  16/20 vs 11/20, then 13/20 vs 12/20. All three C=4 comparisons therefore cross the
+  numerical quality-regression threshold. Do not claim quality preservation. The main
+  report includes the separate repeat table. All pilot server processes have exited;
+  the GPU was confirmed idle afterward. The user's VS Code allocation remains active.
+- A subsequent **64-story QuALITY extension**, step **6847083.4**, completed successfully
+  in **30m28s**: **1,024 validated runs / 16 groups**. It covers C=1,16,32 and three
+  sampling seeds for BASE/parallel at C=16. See `results/pilot/pilot_6847083_extension_report.md`.
+  BASE/parallel latency ratios at seed 0: **2.36x, 1.63x, 1.42x** as C increases. Caching-off
+  adds **0.77s, 13.72s, 24.33s** to median parallel latency at those loads. Full L3 at C=16
+  changes estimated prefill by **-7.7%** and median latency by **+9.8%**; at C=32 median
+  latency improves by **3.9%** in this short pilot.
+- `--record-inputs` now saves messages, hashes, request seeds, sampling settings and responses.
+  The 16 tests pass, including payload-preservation checks for recording. Request/history,
+  parser, vote and Prometheus checks passed on the extension. Parallel round-1 prefill is
+  already about one prompt copy per debate; matching seeds/messages still produce different
+  responses. Per-call finish reasons and rendered token IDs remain unrecorded.
+- Read `docs/proposal_alignment_review.md` before full experiments: the current pilot is
+  exploratory and does not meet all preregistered workflow, measurement, and validation gates.
+
+The original handoff below is retained as historical context; the follow-up supersedes its
+download, smoke-test, and GPU-availability status.
 
 ## 1. Where things stand
 
