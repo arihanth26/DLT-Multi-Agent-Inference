@@ -9,7 +9,7 @@ CSE 8803, Fall 2026. Team: Tanishk Deo, Arihanth Jayavijayan, Malhar Jadhav. Sub
   - vLLM Prometheus counters for queue, prefill, decode and preemptions;
   - a closed-loop load generator;
   - paired bootstrap and McNemar analysis.
-- **TA feedback, keeping caching separate from the baseline.** BASE is the released sequential order with prefix caching (APC) **on**. APC off is an ablation. Each configuration runs on its own server process and starts with an empty prefix cache.
+- **TA feedback, keeping caching separate from the baseline.** BASE is the released sequential order with prefix caching (APC) **on**. APC off is an ablation. APC on and APC off run on separate server processes, and every configuration starts with an empty prefix cache.
 - **TA feedback, L3 inputs.** L3 is split into two configurations. **L3a** only adds a prefill warm-up, so prompts are unchanged. **L3** adds the shared round-2 transcript, so prompts change. Any change in inputs or quality can then be attributed separately.
 - **Runs so far** (about 1.2 H100-hours):
   - a 430-debate grid at C=1 and C=4;
@@ -29,7 +29,7 @@ CSE 8803, Fall 2026. Team: Tanishk Deo, Arihanth Jayavijayan, Malhar Jadhav. Sub
   - L1 clears 1.5× at C=1. At C=32 its gain is 31% of its C=1 value, below the preregistered 50%.
   - Caching barely matters on GSM8K but grows with context length and load on QuALITY.
 - **H4 is not supported so far.**
-  - vLLM 0.31 already computes the shared round-1 prompt about once per debate under parallel dispatch, so a warm-up request adds nothing.
+  - Token counts from the API and server counters suggest vLLM 0.31 already computes the shared round-1 prompt about once per debate under parallel dispatch, so a warm-up request adds nothing. This is not confirmed by a kernel-level trace.
   - The shared transcript cuts prefill, but answers get longer, so latency rises.
   - The 30% / 10% targets are not met.
 - **Quality is noisy.**
@@ -38,13 +38,14 @@ CSE 8803, Fall 2026. Team: Tanishk Deo, Arihanth Jayavijayan, Malhar Jadhav. Sub
   - At C=4, parallel was below BASE in all three repeats (−5, −10, −25 pp; none significant).
   - On 64 stories at C=16, the differences were 0, +6.3 and −1.6 pp across seeds 0–2.
   - At this n, the 2 pp guardrail is smaller than run-to-run noise.
-- **Compute.** A BASE debate costs 5–7 s, not the 14 s assumed in the proposal, so the compute need drops from about 50 to about 25 H100-hours.
+- **Compute.** A BASE debate costs 5–7 s, not the 14 s assumed in the proposal. Extrapolating, the remaining runs need fewer than the 50 requested H100-hours; this rough estimate is not validated for the full grid.
+- **Status of these numbers.** Each points in the predicted direction, but none is a formal preregistered result at these sample sizes with approximate prompts.
 
 **Blockers.**
 1. The prompts approximate Du et al.; the released code still has to be wrapped.
 2. Sampling is not reproducible at fixed seeds, and that noise is larger than the 2 pp guardrail.
 3. QuALITY has only 265 distinct stories (115 validation + 150 train), fewer than the 300 needed under load.
-4. `ice-gpu` H100 queue waits reach about 12 hours, and storage quota limits are tight.
+4. `ice-gpu` H100 queue waits reached about 12 hours. A storage problem is resolved: `~/scratch` was a plain directory on the 30 GB home filesystem, so the model weights were moved to the real scratch allocation.
 5. The repository scaffold followed an earlier draft (Qwen models, APC-off baseline); it is being aligned with the approved proposal.
 
 **Revised plan.** Preregistered thresholds are unchanged. Each revision below is logged with its date and reason.

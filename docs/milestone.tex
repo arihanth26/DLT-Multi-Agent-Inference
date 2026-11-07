@@ -1,0 +1,62 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{booktabs}
+
+\titleformat{\section}{\normalsize\bfseries}{\thesection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{2pt}{0pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1pt}
+\setlist{nosep,leftmargin=1.4em}
+\newcommand{\head}[1]{\textbf{#1}\ }
+
+\newcommand{\projtitle}{Multi-Agent Inference Optimizations: Parallel Dispatch and Prefix Caching}
+
+\begin{document}
+
+\begin{center}
+{\large\bfseries \projtitle}\\[3pt]
+CSE 8803 Milestone, Fall 2026 \quad Team: Tanishk Deo, Arihanth Jayavijayan, Malhar Jadhav
+\end{center}
+
+\section{Progress}
+\head{Setup.} BASE is the released debate (3 agents, 2 rounds, majority vote), with its calls made one at a time on vLLM with prefix caching on. \textbf{L1} (parallel dispatch) calls a round's three debaters at once. \textbf{L2} (prefix caching) switches vLLM's reuse of computed prompt prefixes on or off. \textbf{L3} (ours, on top of L1+L2) caches the shared prompt with one request before the debaters fan out, and gives them one shared round-2 transcript.
+
+\head{Achieved.} Weeks 6--9 are complete at pilot scale. A pinned vLLM 0.31.0 server runs Llama-3.1-8B-Instruct in bf16 on one H100 80\,GB on ICE. Our harness runs both tasks in every configuration, a load generator keeps $C$ debates in flight, and a tracer logs each call's timing, tokens and response alongside vLLM's queue, prefill and decode counters. We have run 1,534 debates so far.
+
+\head{Feedback addressed.} Runs with caching off are ablations, never the baseline, and every configuration starts from an empty cache. We split L3 in two. L3a only warms the cache, and its round-1 requests matched L1+L2 exactly (192 of 192 hashes). Full L3 deliberately changes the round-2 prompt, so the accuracy guardrail judges it. H100 availability is confirmed.
+
+\section{Preliminary Results}
+The full path runs end to end on both tasks. Our profiled BASE takes a median of 5.4\,s per debate on GSM8K and 7.1\,s on QuALITY at $C{=}1$, and 20.4\,s at $C{=}32$. These results are exploratory: our prompts approximate the released code, and the samples are small.
+
+\smallskip
+{\small
+\begin{tabular}{@{}p{0.2\linewidth}p{0.64\linewidth}p{0.12\linewidth}@{}}
+\toprule
+Rule & Pilot value [paired 95\% bootstrap CI] & Status \\
+\midrule
+1. L1 at $C{=}1$ & GSM8K 2.19$\times$ [1.96, 2.46]; QuALITY 2.36$\times$ [2.18, 2.59] & on track \\
+2. Contention & QuALITY 2.36$\times$ at $C{=}1$ $\to$ 1.42$\times$ at $C{=}32$; gain falls to 31\% & on track \\
+3. Caching & QuALITY loss 0.77\,s ($C{=}1$) $\to$ 13.7\,s ($C{=}16$); GSM8K 0.4\% & on track \\
+4. L3 & QuALITY $C{=}16$: prefill $-$7.7\%, median time $+$9.8\% & not met \\
+5. Quality & vs.\ BASE: $0$, $+6.3$, $-1.6$\,pp at $C{=}16$; $-10$, $-25$, $-5$\,pp at $C{=}4$ & unresolved \\
+\bottomrule
+\end{tabular}}
+
+\smallskip
+For H2, each round waits for its longest answer, which caps L1 near 2.4$\times$ rather than 3$\times$; we already reach 96\% of that cap. For H4, vLLM already prefills the shared round-1 prompt about once per debate, so L3's warm-up saves nothing. Its shared transcript trims prefill, but answers grow 9\% longer.
+
+\section{Blockers}
+Our harness approximates Du et al.'s prompts, so wrapping the released code is now on the critical path. Sampling noise exceeds the 2\,pp guardrail. Identical seeded requests returned identical text in only 53 of 192 cases, and BASE accuracy on the same 20 stories ranged from 65\% to 80\%. QuALITY also has only 265 distinct stories, short of the 300 planned.
+
+\section{Revised Plan}
+\head{What changed.} The model, tasks, BASE and every threshold are unchanged. We log four revisions. (1) Under load we use all 265 QuALITY stories, one question each. (2) The guardrail pools seeds 0--2 and compares against a BASE-vs-BASE noise floor. (3) L3 is split into L3a and full L3, with a one-token warm-up. (4) Completion time ends when the vote is recorded.
+
+\head{Timeline.} \textbf{Nov 7--11:} wrap the released code, log token IDs and finish reasons, and check that L3a keeps round-2 inputs unchanged. \textbf{Nov 12--18:} $C{=}1$ headline (100 problems per task, seeds 0--2, all configurations). \textbf{Nov 19--25:} load sweep at $C\in\{4,16,32\}$ and KV-memory sweep. \textbf{Nov 26--Dec 2:} analysis, reruns, rounds sweep if time allows. \textbf{Dec 3:} report, video, repository.
+
+\end{document}
