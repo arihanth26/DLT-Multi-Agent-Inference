@@ -1,0 +1,14 @@
+---------------------------------------
+Begin Slurm Prolog: Nov-06-2026 19:05:19
+Job ID:    6847083
+User ID:   tdeo7
+Account:   coc
+Job name:  bash
+Partition: ice-gpu
+QOS:       
+---------------------------------------
+quality  seq    apc=on C=4 n=20: median T 8.90s acc 0.80 tasks/min 25.9
+quality  par    apc=on C=4 n=20: median T 4.60s acc 0.55 tasks/min 50.3
+quality  seq    apc=on C=4 n=20: median T 8.57s acc 0.65 tasks/min 27.6
+quality  par    apc=on C=4 n=20: median T 4.38s acc 0.60 tasks/min 50.6
+== repeat checks done in 224s

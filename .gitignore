@@ -19,3 +19,13 @@ logs/*
 
 # Model weights live in the Hugging Face cache, not in the repo
 weights/
+
+# macOS
+.DS_Store
+
+# Large raw traces (>100 MB, GitHub limit) and duplicate archives. Kept on ICE
+# (~/scratch/dlt-proj/results/pilot) and locally; see HANDOFF.md.
+results/pilot/pilot_6847083_extension.jsonl
+results/pilot/pilot_6847083_extension_seed0.jsonl
+results/*.zip
+results/extended_results_2026-11-06/

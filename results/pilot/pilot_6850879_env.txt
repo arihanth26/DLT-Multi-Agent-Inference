@@ -1,0 +1,5 @@
+host atl1-1-03-012-23-0.pace.gatech.edu
+commit 7fa8afe
+NVIDIA H100 80GB HBM3, GPU-0976e0ab-311d-ded8-bf42-3d02bcad75d7, 81559 MiB, 615.71.09
+vllm 0.31.0
+model llama-3.1-8b NG=2 NQ=2

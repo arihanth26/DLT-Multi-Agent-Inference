@@ -1,0 +1,6 @@
+2026-11-06T19:25:22-05:00
+atl1-1-03-013-3-0.pace.gatech.edu
+7fa8afe5aad46dc08649e5be8b6e6d75a4a3312d
+NVIDIA H100 80GB HBM3, GPU-50c84c8a-1aba-88d3-ac48-894395fcf825, 81559 MiB, 615.71.09
+vllm 0.31.0
+One H100; 4 CPUs; 64 distinct validation stories; seed 0 priority grid; optional seeds 1,2; exploratory only.
