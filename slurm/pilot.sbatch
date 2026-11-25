@@ -40,7 +40,7 @@ SERVER_PID=""
 FAILED_CONFIGS=0
 stop_server() {
   [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null && wait "$SERVER_PID" 2>/dev/null
-  pkill -f "vllm.entrypoints.openai.api_server" 2>/dev/null
+  # only this job's own server is stopped (never pkill: it could hit other jobs of the same user)
   SERVER_PID=""; sleep 10
 }
 trap stop_server EXIT

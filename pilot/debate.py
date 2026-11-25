@@ -62,48 +62,70 @@ def load_problems(task: str, n: int, problem_seed: int = 0) -> List[Dict[str, An
     no two problems share a story (which would give free cross-problem cache hits)."""
     from datasets import load_dataset
 
-    rng = random.Random(problem_seed)
     if task == "gsm8k":
+        # As released (Du et al. gen_gsm.py): random.seed(0), shuffle the whole test set, take the
+        # first n. problem_seed replaces 0 only if set; the released order is problem_seed=0.
         ds = load_dataset("openai/gsm8k", "main", split="test")
-        return [
-            {"id": f"gsm8k-test-{i}", "question": ds[i]["question"].strip(),
-             "gold": parse_gold_answer(ds[i]["answer"])}
-            for i in rng.sample(range(len(ds)), n)
-        ]
-    ds = load_dataset("emozilla/quality", split="validation")
-    order = list(range(len(ds)))
-    rng.shuffle(order)
+        idx = list(range(len(ds)))
+        random.Random(problem_seed).shuffle(idx)
+        return [{"id": f"gsm8k-test-{i}", "question": ds[i]["question"].strip(),
+                 "gold": parse_gold_answer(ds[i]["answer"])} for i in idx[:n]]
+    rng = random.Random(problem_seed)
     seen, out = set(), []
-    for i in order:
-        row = ds[i]
-        key = hashlib.md5(row["article"].encode()).hexdigest()
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append({"id": f"quality-val-{i}", "article": row["article"], "question": row["question"],
-                    "options": list(row["options"]), "gold": LETTERS[int(row["answer"])]})
-        if len(out) == n:
-            break
+    for split in ("validation", "train"):  # revision 1: up to 265 distinct stories (115 + 150)
+        ds = load_dataset("emozilla/quality", split=split)
+        order = list(range(len(ds)))
+        rng.shuffle(order)
+        for i in order:
+            row = ds[i]
+            key = hashlib.md5(row["article"].encode()).hexdigest()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({"id": f"quality-{split[:3]}-{i}", "article": row["article"],
+                        "question": row["question"], "options": list(row["options"]),
+                        "gold": LETTERS[int(row["answer"])]})
+            if len(out) == n:
+                return out
     return out
 
 
 # ----------------------------------------------------------------------------- prompts
 
+PROMPTS = "released-v1"  # Du et al. gen_gsm.py wording, verbatim for GSM8K (commit 9846749)
+
+
+def question_text(task: str, p: Dict[str, Any]) -> str:
+    """What round 2 repeats as 'the original problem' (QuALITY: question and options, not the story)."""
+    if task == "gsm8k":
+        return p["question"]
+    return p["question"] + " " + " ".join(f"({LETTERS[k]}) {o}" for k, o in enumerate(p["options"]))
+
+
 def round1_prompt(task: str, p: Dict[str, Any]) -> str:
     """Round-1 prompt, identical for every debater. For QuALITY the story comes first."""
     if task == "gsm8k":
-        return f"Can you solve the following math problem? {p['question']} Explain your reasoning. {FORMAT[task]}"
+        return (f"Can you solve the following math problem? {p['question']} Explain your reasoning. "
+                f"{FORMAT[task]} ")
     opts = "\n".join(f"({LETTERS[k]}) {o}" for k, o in enumerate(p["options"]))
     return (f"{p['article']}\n\nQuestion: {p['question']}\n{opts}\n\n"
             f"Answer the question about the story above. Explain your reasoning. {FORMAT[task]}")
 
 
-def round2_released(task: str, others: List[str]) -> str:
-    """Round-2 user turn as in the released debate code: the OTHER agents' answers only."""
+NOUN = {"gsm8k": "math problem", "quality": "question"}
+
+
+def round2_tail(task: str, q: str) -> str:
+    return (f"\n\n Using the solutions from other agents as additional information, can you provide "
+            f"your answer to the {NOUN[task]}? \n The original {NOUN[task]} is {q}. {FORMAT[task]}")
+
+
+def round2_released(task: str, others: List[str], q: str) -> str:
+    """Round-2 user turn as in the released code (construct_message): the OTHER agents' answers,
+    then the original problem repeated."""
     s = "These are the solutions to the problem from other agents: "
     s += "".join(f"\n\n One agent solution: ```{o}```" for o in others)
-    return (s + "\n\n Using the solutions from other agents as additional information, can you "
-            f"provide your answer to the problem? {FORMAT[task]}")
+    return s + round2_tail(task, q)
 
 
 def round2_shared_prefix(task: str, r1: str, answers: List[str]) -> str:
@@ -113,11 +135,10 @@ def round2_shared_prefix(task: str, r1: str, answers: List[str]) -> str:
     return s + "\n\n"
 
 
-def round2_agent_line(task: str, i: int) -> str:
+def round2_agent_line(task: str, i: int, q: str) -> str:
     """L3: the short agent-specific line appended after the shared transcript."""
-    return (f"You are Agent {i + 1}; the solution labelled Agent {i + 1} is your own. Using the "
-            "solutions from the other agents as additional information, can you provide your "
-            f"answer to the problem? {FORMAT[task]}")
+    return (f"You are Agent {i + 1}; the solution labelled Agent {i + 1} is your own."
+            + round2_tail(task, q))
 
 
 # ----------------------------------------------------------------------------- scoring
@@ -159,6 +180,7 @@ async def run_debate(client: LLMClient, task: str, mode: str, p: Dict[str, Any],
     """Run one debate (or single call) and return its record."""
     n_agents, n_rounds = (1, 1) if mode == "single" else (AGENTS, ROUNDS)
     r1 = round1_prompt(task, p)
+    q = question_text(task, p)
     trace: List[Dict[str, Any]] = []
     t0 = time.perf_counter()
 
@@ -191,28 +213,27 @@ async def run_debate(client: LLMClient, task: str, mode: str, p: Dict[str, Any],
         elif mode == "l3":
             shared = round2_shared_prefix(task, r1, answers)
             await warm([{"role": "user", "content": shared}], rnd)
-            msgs = [[{"role": "user", "content": shared + round2_agent_line(task, i)}] for i in range(n_agents)]
+            msgs = [[{"role": "user", "content": shared + round2_agent_line(task, i, q)}] for i in range(n_agents)]
         else:
             for i in range(n_agents):
                 ctx[i].append({"role": "assistant", "content": answers[i]})
                 ctx[i].append({"role": "user", "content": round2_released(
-                    task, [answers[j] for j in range(n_agents) if j != i])})
+                    task, [answers[j] for j in range(n_agents) if j != i], q)})
             msgs = ctx
         if mode == "seq" or mode == "single":
             answers = [await call(msgs[i], i, rnd) for i in range(n_agents)]
         else:
             answers = list(await asyncio.gather(*(call(msgs[i], i, rnd) for i in range(n_agents))))
-    T = time.perf_counter() - t0
-
     preds = [parse_answer(task, a) for a in answers]
     final = majority(preds)
+    T = time.perf_counter() - t0  # revision 4: the clock stops once the vote is recorded
     # Critical path: per round, the slowest debater (plus the warm-up if any).
     cp = 0.0
     for rnd in range(n_rounds):
         cp += max(c["lat"] for c in trace if c["rnd"] == rnd and c["kind"] == "debate")
         cp += sum(c["lat"] for c in trace if c["rnd"] == rnd and c["kind"] == "warm")
     return {"task": task, "mode": mode, "id": p["id"], "T": T, "cp": cp, "final": final,
-            "gold": p["gold"], "correct": final == p["gold"], "preds": preds,
+            "gold": p["gold"], "correct": final == p["gold"], "preds": preds, "prompts": PROMPTS,
             "answer_tokens": [c["out"] for c in trace if c["kind"] == "debate"], "calls": trace}
 
 
