@@ -25,8 +25,8 @@
 set -uo pipefail
 cd "${SLURM_SUBMIT_DIR:-.}"
 : "${DLT:?source env.sh before sbatch}"
-source "$DLT/dlt-venv/bin/activate"
-export HF_HOME="$DLT/hf" HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+source "${VENV:-$DLT/dlt-venv}/bin/activate"
+export HF_HOME="${HF_HOME:-$DLT/hf}" HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
 JOB="${SLURM_JOB_ID:-local$(date +%s)}"
 ONLY="${ONLY:-all}"
 GPU=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1 | cut -d, -f1 | tr -c 'A-Za-z0-9\n' '-' | sed 's/-*$//')
