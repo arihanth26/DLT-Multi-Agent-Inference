@@ -1,14 +1,13 @@
 """Launch a vLLM OpenAI-compatible server for one registered model.
 
-The proposal runs two vLLM instances on one H100 (large and small model) with fixed memory
-fractions in every configuration. This script starts one instance; start it twice, once per
-model, on different ports (see slurm/serve_models.sbatch). Prefix caching is the L3 lever, so
-it is an explicit on/off flag here, and the baseline must use --no-prefix-caching.
+The final design serves one model (Llama-3.1-8B-Instruct) on one GPU. Prefix caching is lever
+L2, so it is an explicit on/off flag. BASE uses caching ON (--prefix-caching); caching OFF
+(--no-prefix-caching) is only an ablation. (The earlier two-model design and its
+serve_models.sbatch are no longer used.)
 
 Usage:
-    python -m models.serve_vllm --model qwen3-14b --no-prefix-caching
-    python -m models.serve_vllm --model qwen3-1.7b --prefix-caching --port 8001
-    python -m models.serve_vllm --model qwen3-14b --no-prefix-caching --dry-run
+    python -m models.serve_vllm --model llama-3.1-8b --prefix-caching
+    python -m models.serve_vllm --model llama-3.1-8b --no-prefix-caching --dry-run
 """
 
 import argparse
