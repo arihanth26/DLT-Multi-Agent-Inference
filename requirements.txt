@@ -5,3 +5,4 @@ huggingface_hub>=0.24
 datasets>=2.20
 pytest>=8.0
 numpy>=1.26  # imported by the HumanEval+ test harness
+matplotlib>=3.8  # pilot/figures.py
