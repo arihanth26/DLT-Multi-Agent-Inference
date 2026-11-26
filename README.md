@@ -47,12 +47,14 @@ pilot/
   debate.py                  Debate harness: modes seq, par, l3a, l3, single; closed-loop load --conc
   supply_chain.py            Supply-chain workflow (3 stages, 9 calls per task), same modes
   analyze.py                 Final analysis: five decision rules, guardrail, H2, factorial, extension
+  input_audit.py             Checks what each configuration sends (L3a inputs unchanged; what L3 changes)
+  figures.py                 Report figures (PDF/PNG) and a CSV of every plotted number
   summarize.py               Pilot summary (Nov 6 results)
 slurm/
   campaign.sbatch            Runs every final configuration in priority order; resumable
   smoke.sbatch               15-minute end-to-end check on one GPU
   pilot.sbatch               The Nov 6 pilot grid
-tests/                       Unit tests, no GPU or network needed (19 tests)
+tests/                       Unit tests, no GPU or network needed (22 tests)
 results/
   pilot/                     Pilot results (exploratory)
   final_<GPU model>/         Final results, one JSONL file per configuration
@@ -70,7 +72,7 @@ cd DLT-Multi-Agent-Inference
 python -m venv .venv && source .venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt -r requirements-serving.txt   # vLLM 0.31.0 and client deps
-python -m pytest -q                                           # 19 passed, no GPU needed
+python -m pytest -q                                           # 22 passed, no GPU needed
 
 hf auth login
 HF_HUB_DISABLE_XET=1 hf download meta-llama/Llama-3.1-8B-Instruct \
@@ -97,6 +99,9 @@ sbatch slurm/smoke.sbatch                        # optional, ~15 min end-to-end 
 sbatch slurm/campaign.sbatch                     # resubmit until the log ends "0 run"
 python -m pilot.analyze results/final_NVIDIA-H100-80GB-HBM3 --json results/final_numbers.json \
     > results/final_report.md                   # all five rule verdicts; rule 1 = headline
+python -m pilot.input_audit results/final_NVIDIA-H100-80GB-HBM3 \
+    --tokenizer meta-llama/Llama-3.1-8B-Instruct > results/input_audit.md   # CPU only
+python -m pilot.figures results/final_NVIDIA-H100-80GB-HBM3 --out results/figures
 ```
 
 `campaign.sbatch` runs, in order: the C=1 headline (2 tasks x 7 configurations x 100
@@ -139,10 +144,15 @@ time, the coordinator's chosen specialist and the stage-2 vote.
    released eval script counts unparseable answers as correct.
 2. **Revision 1:** QuALITY draws validation stories first, then train stories (up to 265).
 3. **Revision 2:** a BASE-vs-BASE repeat is the noise floor for the accuracy guardrail.
-4. **Revision 4:** the latency clock stops after the majority vote.
-5. **Supply-chain workload** added as an exploratory extension; it is not part of any
+   Accuracy at C=1 pools seeds 0-2, paired by problem and seed.
+4. **Revision 3:** L3 is split into L3a (1-token warm-up only; prompts unchanged, verified by
+   `pilot/input_audit.py`) and full L3 (adds the shared round-2 transcript, which changes the
+   round-2 prompt by design). vLLM has no prefill-only request, so the warm-up generates one token;
+   its time and tokens count toward L3.
+5. **Revision 4:** the latency clock stops after the majority vote.
+6. **Supply-chain workload** added as an exploratory extension; it is not part of any
    preregistered decision rule.
-6. **[If used] Hardware:** final runs on [GPU], because of H100 queue times; the pilot and
+7. **[If used] Hardware:** final runs on [GPU], because of H100 queue times; the pilot and
    milestone ran on H100 80 GB.
 
 No preregistered threshold was changed.
