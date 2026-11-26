@@ -123,8 +123,11 @@ Tanishk's existing layout: repo `~/scratch/dlt-proj`, venv `~/scratch/dlt-venv`,
 
 - [x] Malhar's ICE setup; code changes above pushed; campaign jobs queued (Malhar: one H100 job
       running since Nov 25 ~17:00; more pending).
-- [ ] Tanishk and Arihanth queue the same campaign from their accounts.
-- [ ] Recover pilot job step 6847083.5 and the 176 MB extension trace (Tanishk).
+- [ ] Tanishk and Arihanth queue the same campaign from their accounts. (Tanishk: done Nov 26,
+      jobs 7364564/7364565, 4 h each, repo `/storage/ice1/9/1/tdeo7/dlt/repo`.)
+- [x] Recover pilot job step 6847083.5 (Tanishk, Nov 26): COMPLETED, 120 records validated;
+      `results/pilot/pilot_6847083_c1_seeds_report.md`. BASE/parallel 2.41x, 2.27x, 2.24x
+      (seeds 0-2, 20 stories, exploratory). Extension trace (176 MB) still needs Box/OneDrive.
 - [ ] C=1 headline seeds 0-2, noise floor, load sweep, supply chain (campaign).
 - [ ] Measure the supply-chain dossier's real token count (tokenizer on login node).
 - [ ] L3a fixed-upstream replay test; token-ID logging (open measurement items).

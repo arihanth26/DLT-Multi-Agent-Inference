@@ -1,0 +1,22 @@
+---------------------------------------
+Begin Slurm Prolog: Nov-06-2026 19:56:11
+Job ID:    6847083
+User ID:   tdeo7
+Account:   coc
+Job name:  bash
+Partition: ice-gpu
+QOS:       
+---------------------------------------
+== C=1 seq seed=0 n=20 at 2026-11-06T19:57:16-05:00
+quality  seq    apc=on C=1 n=20: median T 7.29s acc 0.65 tasks/min 8.5
+== C=1 par seed=0 n=20 at 2026-11-06T19:59:42-05:00
+quality  par    apc=on C=1 n=20: median T 3.04s acc 0.70 tasks/min 19.5
+== C=1 seq seed=1 n=20 at 2026-11-06T20:00:48-05:00
+quality  seq    apc=on C=1 n=20: median T 7.21s acc 0.65 tasks/min 8.8
+== C=1 par seed=1 n=20 at 2026-11-06T20:03:08-05:00
+quality  par    apc=on C=1 n=20: median T 3.21s acc 0.75 tasks/min 19.6
+== C=1 seq seed=2 n=20 at 2026-11-06T20:04:13-05:00
+quality  seq    apc=on C=1 n=20: median T 6.70s acc 0.60 tasks/min 8.8
+== C=1 par seed=2 n=20 at 2026-11-06T20:06:34-05:00
+quality  par    apc=on C=1 n=20: median T 3.04s acc 0.65 tasks/min 20.3
+== C1 seeds done in 686s
