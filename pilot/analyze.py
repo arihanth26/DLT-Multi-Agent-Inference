@@ -130,6 +130,13 @@ def fmt(x, d=2):
     return "n/a" if x is None or (isinstance(x, float) and math.isnan(x)) else f"{x:.{d}f}"
 
 
+def verdict(ok, *vals):
+    """'pending' when any input is missing (NaN), else met / not met."""
+    if any(v is None or (isinstance(v, float) and math.isnan(v)) for v in vals):
+        return "pending"
+    return "met" if ok else "not met"
+
+
 def ci(t, d=2):
     return f"{fmt(t[0], d)} [{fmt(t[1], d)}, {fmt(t[2], d)}]"
 
@@ -164,7 +171,7 @@ def rules(runs, numbers) -> List[str]:
         r1[task] = boot_ratio(T(task, "seq", "on", 1), T(task, "par", "on", 1))
         ok = r1[task][0] >= 1.5 and r1[task][1] > 1.2
         out.append(f"| 1 | {task} L1 speedup at C=1 | {ci(r1[task])} | >= 1.5, lower bound > 1.2 | "
-                   f"{'met' if ok else 'not met'} |")
+                   f"{verdict(ok, r1[task][0])} |")
     numbers["rule1"] = r1
 
     # Rule 2: L1 add-one gain at C=32 < half its C=1 value.
@@ -174,7 +181,7 @@ def rules(runs, numbers) -> List[str]:
         g32 = s32[0] - 1
         ok = not math.isnan(g32) and g32 < 0.5 * g1
         out.append(f"| 2 | {task} L1 gain C=32 vs C=1 | {fmt(g32)} vs {fmt(g1)} "
-                   f"(C=32 speedup {ci(s32)}) | < half | {'met' if ok else 'not met'} |")
+                   f"(C=32 speedup {ci(s32)}) | < half | {verdict(ok, g32, g1)} |")
         numbers.setdefault("rule2", {})[task] = {"gain_c1": g1, "speedup_c32": s32}
 
     # Rule 3: L2 leave-one-out loss = T(par off) - T(par on).
@@ -184,12 +191,12 @@ def rules(runs, numbers) -> List[str]:
     ok_q = l16[0] >= 2 * l1q[0] and l16[0] >= 0.10 * t16
     out.append(f"| 3 | QuALITY L2 loss C=16 vs C=1 | {ci(l16)} s vs {ci(l1q)} s "
                f"({fmt(100 * l16[0] / t16 if t16 else float('nan'), 1)}% of T) | >= 2x and >= 10% | "
-               f"{'met' if ok_q else 'not met'} |")
+               f"{verdict(ok_q, l16[0], l1q[0])} |")
     lg = boot_diff(T("gsm8k", "par", "off", 1), T("gsm8k", "par", "on", 1))
     tg = med(list(T("gsm8k", "par", "on", 1).values()))
     share = 100 * lg[0] / tg if tg else float("nan")
     out.append(f"| 3 | GSM8K L2 loss at C=1 | {ci(lg)} s ({fmt(share, 1)}% of T) | < 5% | "
-               f"{'met' if share < 5 else 'not met'} |")
+               f"{verdict(share < 5, share)} |")
     numbers["rule3"] = {"quality_c1": l1q, "quality_c16": l16, "gsm8k_c1": lg, "gsm8k_share_pct": share}
 
     # Rule 4: L3 on QuALITY at C=16 vs L1+L2.
@@ -200,7 +207,7 @@ def rules(runs, numbers) -> List[str]:
     tcut = 100 * (1 - tr[0])
     ok4 = cut >= 30 and tcut >= 10
     out.append(f"| 4 | QuALITY L3 at C=16: prefill cut, median T cut | {fmt(cut, 1)}%, {fmt(tcut, 1)}% "
-               f"(T ratio {ci(tr)}) | >= 30%, >= 10% | {'met' if ok4 else 'not met'} |")
+               f"(T ratio {ci(tr)}) | >= 30%, >= 10% | {verdict(ok4, cut, tcut)} |")
     numbers["rule4"] = {"prefill_cut_pct": cut, "T_ratio": tr}
 
     # Rule 5: accuracy guardrail at C=1 (pooled seeds), with BASE-vs-BASE noise floor.
@@ -228,7 +235,9 @@ def h2_and_factorial(runs, numbers) -> List[str]:
     for task in ("gsm8k", "quality"):
         base = per_problem(runs, task, "seq", "on", 1, (0, 1, 2))
         par = per_problem(runs, task, "par", "on", 1, (0, 1, 2))
-        cp = per_problem(runs, task, "par", "on", 1, (0, 1, 2), field="cp")
+        # Bound from the SEQUENTIAL run: its T is the sum of all call latencies, and its cp is the
+        # sum over rounds of the slowest call, i.e. the best any parallel dispatch could reach.
+        cp = per_problem(runs, task, "seq", "on", 1, (0, 1, 2), field="cp")
         ids = sorted(set(base) & set(par) & set(cp))
         if not ids:
             continue
