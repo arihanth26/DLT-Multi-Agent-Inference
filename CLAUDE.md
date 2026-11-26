@@ -129,8 +129,12 @@ Tanishk's existing layout: repo `~/scratch/dlt-proj`, venv `~/scratch/dlt-venv`,
       `results/pilot/pilot_6847083_c1_seeds_report.md`. BASE/parallel 2.41x, 2.27x, 2.24x
       (seeds 0-2, 20 stories, exploratory). Extension trace (176 MB) still needs Box/OneDrive.
 - [ ] C=1 headline seeds 0-2, noise floor, load sweep, supply chain (campaign).
-- [ ] Measure the supply-chain dossier's real token count (tokenizer on login node).
-- [ ] L3a fixed-upstream replay test; token-ID logging (open measurement items).
+- [x] Measure prompt token counts (Llama tokenizer, Nov 26): supply-chain dossier median 3,473
+      (3,332-3,579), full shared prompt 3,577; QuALITY round 1 (265 stories) median 6,635
+      (2,380-8,538); GSM8K round 1 median 93 (61-176).
+- [ ] L3a fixed-upstream replay test: tool done (`pilot/input_audit.py`, tested); run it on the
+      C=1 files once they exist, with `--tokenizer meta-llama/Llama-3.1-8B-Instruct` on the
+      login node. Token-ID logging is covered by its check D (re-tokenizes recorded messages).
 - [ ] Gather result folders from all accounts into one place; run `pilot/analyze.py`.
 - [ ] Report (NeurIPS 2026 template), README for the zip, 10-minute video. Target Dec 2;
       Dec 3 is buffer.
