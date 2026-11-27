@@ -59,3 +59,20 @@ def test_audit_catches_a_changed_request():
     call["messages"][-1]["content"] += " (tampered)"
     text = "\n".join(audit(bad, {"gsm8k": PROBLEMS}))
     assert "l3a 2/3" in text
+
+
+class DictTokenizer:
+    """Like newer transformers: apply_chat_template(tokenize=True) returns a dict, one token per char."""
+
+    def apply_chat_template(self, msgs, add_generation_prompt=True, tokenize=True):
+        text = "".join(f"<{m['role']}>{m['content']}<eot>" for m in msgs) + "<asst>"
+        return {"input_ids": [ord(ch) for ch in text], "attention_mask": [1] * len(text)}
+
+
+def test_token_check_unwraps_dicts_and_measures_reuse():
+    from pilot.input_audit import check_tokens
+    lines = check_tokens(make_runs(), "gsm8k", 0, DictTokenizer())
+    l3a = next(x for x in lines if "l3a round 1" in x)
+    assert "in **9/9** calls" in l3a                     # round-1 warm-up == debater prompt
+    share = float(l3a.split("median **")[1].split("%")[0])
+    assert share > 50                                     # not the 0% a dict-length bug gives

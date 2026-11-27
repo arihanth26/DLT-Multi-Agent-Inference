@@ -40,6 +40,7 @@ from pilot.debate import AGENTS, question_text, run_debate
 
 MODES = ("seq", "par", "l3a", "l3")
 BLOCK = 16  # vLLM KV-cache block size (default)
+CLOSING = 6  # warm-up tokens after the shared text that a debater prompt need not share
 
 
 # ----------------------------------------------------------------------------- loading
@@ -184,7 +185,10 @@ def check_self(runs, task, seed, problems) -> List[str]:
 def check_tokens(runs, task, seed, tok) -> List[str]:
     """D: warm-up token IDs are a prefix of debater token IDs; reusable share in whole KV blocks."""
     def ids(msgs):
-        return tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True)
+        out = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True)
+        if hasattr(out, "keys"):  # newer transformers return a BatchEncoding, not a list
+            out = out["input_ids"]
+        return list(out)
 
     out = []
     for m in ("l3a", "l3"):
@@ -207,7 +211,9 @@ def check_tokens(runs, task, seed, tok) -> List[str]:
                     while lcp < min(len(w), len(d)) and w[lcp] == d[lcp]:
                         lcp += 1
                     n += 1
-                    prefix_ok += lcp >= len(w) - 5 or lcp == len(d)
+                    # The warm-up's last tokens are <|eot_id|> + the assistant header (5 for Llama 3),
+                    # plus at most one token merged differently at the boundary.
+                    prefix_ok += lcp == len(d) or lcp >= len(w) - CLOSING
                     share.append((lcp // BLOCK) * BLOCK / len(d))
                     cached.append(c["cached"] / max(c["prompt"], 1))
             if n:
@@ -215,6 +221,8 @@ def check_tokens(runs, task, seed, tok) -> List[str]:
                            f"(up to its closing turn tokens) in **{prefix_ok}/{n}** calls; reusable share of "
                            f"debater prompt (whole 16-token blocks) median **{st.median(share):.1%}**; "
                            f"cached share vLLM reported median **{st.median(cached):.1%}**")
+    if not out:
+        out.append("- D: no warm-up calls found")
     return out
 
 
