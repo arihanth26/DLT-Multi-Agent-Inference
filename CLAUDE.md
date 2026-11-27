@@ -128,14 +128,21 @@ Tanishk's existing layout: repo `~/scratch/dlt-proj`, venv `~/scratch/dlt-venv`,
 - [x] Recover pilot job step 6847083.5 (Tanishk, Nov 26): COMPLETED, 120 records validated;
       `results/pilot/pilot_6847083_c1_seeds_report.md`. BASE/parallel 2.41x, 2.27x, 2.24x
       (seeds 0-2, 20 stories, exploratory). Extension trace (176 MB) still needs Box/OneDrive.
-- [ ] C=1 headline seeds 0-2, noise floor, load sweep, supply chain (campaign).
+- [x] C=1 headline seeds 0-2, noise floor, load sweep (Malhar's H100 jobs; archive
+      h100_results_nov26.tgz, sha256 c24e162e...): 78/80 complete. Pending: quality seq/par
+      apc=off C=4. Supply chain not run.
 - [x] Measure prompt token counts (Llama tokenizer, Nov 26): supply-chain dossier median 3,473
       (3,332-3,579), full shared prompt 3,577; QuALITY round 1 (265 stories) median 6,635
       (2,380-8,538); GSM8K round 1 median 93 (61-176).
 - [ ] L3a fixed-upstream replay test: tool done (`pilot/input_audit.py`, tested); run it on the
       C=1 files once they exist, with `--tokenizer meta-llama/Llama-3.1-8B-Instruct` on the
       login node. Token-ID logging is covered by its check D (re-tokenizes recorded messages).
-- [ ] Gather result folders from all accounts into one place; run `pilot/analyze.py`.
+- [x] Analysis on the 78 complete files (Nov 26): `results/final_report.md`, `results/final_numbers.json`,
+      `results/input_audit.md` (A-C all 100%), `results/figures/`. Rules 1, 2, 3 met; rule 4 not met;
+      rule 5 held for every configuration (GSM8K L3a exactly -2.0 pp, p=0.15: held after fixing a
+      float-rounding bug that flagged it). Note: the BASE-vs-BASE repeat is 0 discordant because
+      sequential C=1 is deterministic; the same-input pair L3a vs L1+L2 (-2.3/+1.3 pp) is the
+      informative noise scale.
 - [ ] Report (NeurIPS 2026 template), README for the zip, 10-minute video. Target Dec 2;
       Dec 3 is buffer.
 

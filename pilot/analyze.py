@@ -123,7 +123,16 @@ def accuracy_vs(runs, task, mode, apc, conc, seeds, base=("seq", "on"), tag="", 
     p = mcnemar_exact(b, c)
     diff = 100 * (acc_a - acc_b)
     return {"n": len(keys), "acc": acc_a, "base_acc": acc_b, "diff_pp": diff, "better": b,
-            "worse": c, "p": p, "regression": diff < -2.0 or (c > b and p < 0.05)}
+            "worse": c, "p": p, "regression": is_regression(b, c, len(keys), p)}
+
+
+def is_regression(better: int, worse: int, n: int, p: float) -> bool:
+    """Rule 5: 'more than 2.0 percentage points below baseline, or significantly lower'.
+
+    Uses exact integer arithmetic: 100*(better-worse)/n < -2  <=>  50*(better-worse) < -n.
+    (A float comparison flags exactly -2.0 pp, e.g. 251/300 vs 257/300, as a regression.)
+    """
+    return 50 * (better - worse) < -n or (worse > better and p < 0.05)
 
 
 def fmt(x, d=2):

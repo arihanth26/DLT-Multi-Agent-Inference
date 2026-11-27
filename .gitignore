@@ -29,3 +29,7 @@ results/pilot/pilot_6847083_extension.jsonl
 results/pilot/pilot_6847083_extension_seed0.jsonl
 results/*.zip
 results/extended_results_2026-11-06/
+
+# Result archives shared outside git (Box/OneDrive)
+h100_results_nov26*.tgz
+*.crdownload
