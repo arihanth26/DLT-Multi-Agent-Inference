@@ -26,8 +26,9 @@ decision rules are in `proposal.pdf`; deviations are listed at the end of this f
 ## Headline result
 
 At one debate in flight (C=1), parallel dispatch (L1) cuts median end-to-end latency
-from BASE by **[HEADLINE: GSM8K x.xx x, QuALITY x.xx x]** (paired bootstrap 95% CI over
-problems, 100 problems x seeds 0-2). Reproduce it with the commands under
+from BASE by **2.32x on GSM8K [95% CI 2.19, 2.48] and 2.24x on QuALITY [2.15, 2.37]**
+(paired bootstrap over problems, 100 problems x seeds 0-2, one H100 80 GB), with no accuracy
+regression under the preregistered guardrail. Reproduce it with the commands under
 [Reproduce the results](#reproduce-the-results); the number is rule 1 in `results/final_report.md`.
 
 ## Repository layout
